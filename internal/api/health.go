@@ -22,8 +22,8 @@ func SetupRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.Handle("/metrics", promhttp.Handler())
 
 	// Rutas de Inventario de Nodos
-	mux.HandleFunc("/nodes", NodesHandler(db))
-	mux.HandleFunc("/nodes/", NodeDetailHandler(db)) // Captura /nodes/{id}
+	mux.HandleFunc("/nodes", AuthMiddleware(HandleGetNodes))
+	mux.HandleFunc("/nodes/", AuthMiddleware(HandleGetNodeByUUID))
 
 	// NUEVA RUTA: Disparador de descubrimiento para Node.js
 	mux.HandleFunc("/discover", AuthMiddleware(TriggerDiscoveryHandler()))

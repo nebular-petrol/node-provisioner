@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/bmc-toolbox/bmclib/v2"
+	"github.com/google/uuid"
 )
 
 // IPMIProvider implementa la interfaz discovery.Provider
@@ -26,24 +27,15 @@ func NewIPMIProvider(host string, port int, user string, pass string) *IPMIProvi
 	}
 }
 
+func GenerarUUIDAleatorio() (string, error) {
+	nuevoUUID := uuid.New()
+	return nuevoUUID.String(), nil
+}
+
 // setupClient inicializa el cliente de bmclib
 func (p *IPMIProvider) setupClient() *bmclib.Client {
-	// Creamos la opción funcional para cambiar el puerto por defecto de ipmitool ("623")
-	// al puerto dinámico que venga en tu petición (ej. 6230).
-	// NOTA: Asegúrate de usar la función de opción que provea tu versión de bmclib,
-	// o una opción personalizada si la librería expone la modificación de config.
-
 	portStr := fmt.Sprintf("%d", p.Port)
-
-	// Si bmclib provee una opción oficial para esto, se vería así:
-	// client := bmclib.NewClient(p.Host, p.Username, p.Password, bmclib.WithIpmitoolPort(portStr))
-
-	// Alternativa si prefieres modificar el cliente justo después de crearlo si la estructura lo permite:
 	client := bmclib.NewClient(p.Host, p.Username, p.Password, bmclib.WithIpmitoolPort(portStr))
-
-	// Si tu versión de bmclib exporta la configuración interna, puedes hacer esto directamente:
-	// client.ProviderConfig.Ipmitool.Port = portStr
-
 	return client
 }
 
@@ -57,7 +49,6 @@ func (p *IPMIProvider) TestConnection(ctx context.Context) error {
 	}
 	defer client.Close(ctx)
 
-	// Para probar que está vivo, le pedimos su estado de energía actual
 	state, err := client.GetPowerState(ctx)
 	if err != nil {
 		return fmt.Errorf("fallo al obtener el estado de energía: %w", err)
@@ -67,7 +58,7 @@ func (p *IPMIProvider) TestConnection(ctx context.Context) error {
 	return nil
 }
 
-// FetchHardwareUUID intenta obtener el identificador único del chasis
+// FetchHardwareUUID maneja el flujo de respaldo en cascada
 func (p *IPMIProvider) FetchHardwareUUID(ctx context.Context) (string, error) {
 	client := p.setupClient()
 
@@ -77,18 +68,34 @@ func (p *IPMIProvider) FetchHardwareUUID(ctx context.Context) (string, error) {
 	}
 	defer client.Close(ctx)
 
-	// Obtenemos el inventario/metadata del hardware
+	// PASO 1: Intentar obtener el inventario profundo
 	deviceInfo, err := client.Inventory(ctx)
-	if err != nil {
-		// Fallback amigable para cuando el simulador no soporta inventario profundo
-		slog.Warn("No se pudo obtener inventario completo, devolviendo serial por defecto", "error", err.Error())
-		return "simulated-uuid-1234-5678", nil
-	}
 
-	// El serial principal del chasis/sistema viene en la raíz de deviceInfo
-	if deviceInfo.Serial != "" {
+	// Verificamos si el inventario fue exitoso Y el serial no está vacío
+	if err == nil && deviceInfo != nil && deviceInfo.Serial != "" {
+		slog.Info("UUID obtenido del inventario profundo", "serial", deviceInfo.Serial)
 		return deviceInfo.Serial, nil
 	}
 
+	// Si hubo error en el inventario o el serial vino vacío, lo registramos
+	if err != nil {
+		slog.Warn("No se pudo obtener inventario profundo, pasando a fallback aleatorio", "error", err.Error())
+	} else {
+		slog.Warn("Inventario obtenido pero el campo Serial está vacío, pasando a fallback aleatorio")
+	}
+
+	// PASO 2: Fallback - Generar un UUID aleatorio
+	nuevoUUID, errGen := GenerarUUIDAleatorio()
+	if errGen == nil && nuevoUUID != "" {
+		slog.Info("UUID aleatorio generado exitosamente como fallback", "uuid", nuevoUUID)
+		return nuevoUUID, nil
+	}
+
+	if errGen != nil {
+		slog.Warn("Fallo al generar el UUID aleatorio", "error", errGen.Error())
+	}
+
+	// PASO 3: Último recurso si todo lo anterior falló
+	slog.Error("No se pudo obtener ni generar un UUID válido, usando unknown")
 	return "unknown-uuid-0000", nil
 }

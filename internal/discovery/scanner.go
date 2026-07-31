@@ -3,8 +3,10 @@ package discovery
 import (
 	"context"
 	"log/slog"
+
 	"time"
 
+	"github.com/nebular-petrol/go-node-provisioner/internal/database"
 	"github.com/nebular-petrol/go-node-provisioner/internal/discovery/ipmi"
 )
 
@@ -60,5 +62,11 @@ func RunDiscoveryAsync(req ScanRequest) {
 		"uuid_descubierto", uuid,
 		"nuevo_estado", StateDiscovered)
 
-	// Próximo paso (futuro): Insertar o actualizar el nodo en la base de datos SQLite
+	err = database.SaveOrUpdateNode(database.DB, req.TargetIP, uuid, "DISCOVERED")
+	if err != nil {
+		slog.Error("Error al guardar el nodo en la base de datos", "error", err)
+		return
+	}
+	slog.Info("Nodo persistido exitosamente en la base de datos", "ip", req.TargetIP, "uuid", uuid)
+
 }

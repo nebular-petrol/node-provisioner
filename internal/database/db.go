@@ -3,9 +3,12 @@ package database
 import (
 	"database/sql"
 	"log/slog"
+
 	// Importamos el driver de SQLite que acabamos de descargar
 	_ "github.com/glebarez/sqlite"
 )
+
+var DB *sql.DB
 
 // InitDB inicializa la conexión con SQLite y crea las tablas necesarias si no existen
 func InitDB(dataSourceName string) (*sql.DB, error) {
@@ -32,13 +35,12 @@ func InitDB(dataSourceName string) (*sql.DB, error) {
 	// Guardaremos su ID, Dirección MAC, Dirección IP, el fabricante (Dell/HP) y su estado actual
 	createTableQuery := `
 	CREATE TABLE IF NOT EXISTS nodes (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		mac_address TEXT UNIQUE NOT NULL,
-		ip_address TEXT NOT NULL,
-		vendor TEXT,
-		status TEXT NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);`
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT UNIQUE, -- ¡ESTA ES LA PALABRA MÁGICA!
+    ip_address TEXT, 
+    status TEXT,
+    last_seen DATETIME);
+	`
 
 	_, err = db.Exec(createTableQuery)
 	if err != nil {
@@ -46,5 +48,6 @@ func InitDB(dataSourceName string) (*sql.DB, error) {
 	}
 
 	slog.Info("Base de datos inicializada y tabla 'nodes' lista correctamente")
-	return db, nil
+	DB = db
+	return DB, nil
 }

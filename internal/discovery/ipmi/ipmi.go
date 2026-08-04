@@ -99,3 +99,107 @@ func (p *IPMIProvider) FetchHardwareUUID(ctx context.Context) (string, error) {
 	slog.Error("No se pudo obtener ni generar un UUID válido, usando unknown")
 	return "unknown-uuid-0000", nil
 }
+
+// PowerOn enciende el nodo
+func (p *IPMIProvider) PowerOn(ctx context.Context) error {
+	client := bmclib.NewClient(p.Host, p.Username, p.Password)
+	// Nota: Dependiendo de tu versión de bmclib, se abre la sesión primero o se usa Open()
+	// Aquí usamos el flujo estándar de comandos de energía de bmclib
+
+	// Ejemplo conceptual usando el cliente de bmclib para energía:
+	err := client.Open(ctx)
+	if err != nil {
+		slog.Error("Error en la conexión del nodo seleccionado")
+		return err
+	}
+	defer client.Close(ctx)
+
+	nodestate, err := client.SetPowerState(ctx, "on")
+	if err != nil {
+		slog.Error("Error al ejecutar encendido del nodo seleccionado")
+		return err
+	}
+	if !nodestate {
+		return fmt.Errorf("no se pudo encender el nodo seleccionado")
+	}
+
+	return nil
+}
+
+// PowerOff apaga el nodo
+func (p *IPMIProvider) PowerOff(ctx context.Context) error {
+	client := bmclib.NewClient(p.Host, p.Username, p.Password)
+	// Nota: Dependiendo de tu versión de bmclib, se abre la sesión primero o se usa Open()
+	// Aquí usamos el flujo estándar de comandos de energía de bmclib
+
+	// Ejemplo conceptual usando el cliente de bmclib para energía:
+	err := client.Open(ctx)
+	if err != nil {
+		slog.Error("Error en la conexión del nodo seleccionado")
+		return err
+	}
+	defer client.Close(ctx)
+
+	nodestate, err := client.SetPowerState(ctx, "off")
+	if err != nil {
+		slog.Error("Error al ejecutar apagado del nodo seleccionado")
+		return err
+	}
+	if !nodestate {
+		return fmt.Errorf("no se pudo apagar el nodo seleccionado")
+	}
+
+	return nil
+}
+
+// PowerReset reinicia el nodo (Ciclo de energía)
+func (p *IPMIProvider) PowerReset(ctx context.Context) error {
+	client := bmclib.NewClient(p.Host, p.Username, p.Password)
+	// Nota: Dependiendo de tu versión de bmclib, se abre la sesión primero o se usa Open()
+	// Aquí usamos el flujo estándar de comandos de energía de bmclib
+
+	// Ejemplo conceptual usando el cliente de bmclib para energía:
+	err := client.Open(ctx)
+	if err != nil {
+		slog.Error("Error en la conexión del nodo seleccionado")
+		return err
+	}
+	defer client.Close(ctx)
+
+	nodestate, err := client.SetPowerState(ctx, "cycle")
+	if err != nil {
+		slog.Error("Error al ejecutar reinicio del nodo seleccionado")
+		return err
+	}
+	if !nodestate {
+		return fmt.Errorf("no se pudo reiniciar el nodo seleccionado")
+	}
+
+	return nil
+}
+
+// SetBootDevice configura el siguiente dispositivo de arranque (ej. pxe, disk)
+func (p *IPMIProvider) SetBootDevice(ctx context.Context, device string) error {
+	client := bmclib.NewClient(p.Host, p.Username, p.Password)
+	// Nota: Dependiendo de tu versión de bmclib, se abre la sesión primero o se usa Open()
+	// Aquí usamos el flujo estándar de comandos de energía de bmclib
+
+	// Ejemplo conceptual usando el cliente de bmclib para energía:
+	err := client.Open(ctx)
+	if err != nil {
+		slog.Error("Error en la conexión del nodo seleccionado")
+		return err
+	}
+	defer client.Close(ctx)
+
+	nodestate, err := client.SetBootDevice(ctx, device, false, true)
+	if err != nil {
+		slog.Error("Error al ejecutar configuración del dispositivo de arranque")
+		return err
+	}
+	if !nodestate {
+		return fmt.Errorf("no se pudo configurar el dispositivo de arranque")
+	}
+
+	return nil
+}

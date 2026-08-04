@@ -61,7 +61,7 @@ func main() {
 
 	// 4. CONFIGURAR EL ENRUTADOR (MUX)
 	mux := http.NewServeMux()
-	api.SetupRoutes(mux, db)
+	api.SetupRoutes(mux)
 
 	// 5. CONFIGURACIÓN DEL SERVIDOR SEGURO
 	protocol := strings.ToLower(os.Getenv("PROTOCOL"))

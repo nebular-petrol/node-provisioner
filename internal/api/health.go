@@ -1,7 +1,6 @@
 package api
 
 import (
-	"database/sql"
 	"log/slog"
 	"net/http"
 
@@ -17,13 +16,15 @@ var (
 	})
 )
 
-func SetupRoutes(mux *http.ServeMux, db *sql.DB) {
+func SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/health", healthCheckHandler)
 	mux.Handle("/metrics", promhttp.Handler())
 
 	// Rutas de Inventario de Nodos
 	mux.HandleFunc("/nodes", AuthMiddleware(HandleGetNodes))
 	mux.HandleFunc("/nodes/", AuthMiddleware(HandleGetNodeByUUID))
+	mux.HandleFunc("/nodes/power", AuthMiddleware(HandleNodePower)) // Nota: Usará el sufijo dinámico
+	mux.HandleFunc("/nodes/boot", AuthMiddleware(HandleNodeBoot))
 
 	// NUEVA RUTA: Disparador de descubrimiento para Node.js
 	mux.HandleFunc("/discover", AuthMiddleware(TriggerDiscoveryHandler()))
